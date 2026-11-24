@@ -1,0 +1,100 @@
+// NOVALINK churn model - DAX measures (table: Metrics)
+
+
+// ---- Customers ----
+Total Customers =
+    COUNTROWS(Customers)
+Churned =
+    CALCULATE([Total Customers], Customers[Customer Status] = "Churned")
+Stayed =
+    CALCULATE([Total Customers], Customers[Customer Status] = "Stayed")
+New Customers =
+    CALCULATE([Total Customers], Customers[Customer Status] = "Joined")
+Active Customers =
+    [Stayed] + [New Customers]
+Churn Base =
+    [Stayed] + [Churned]
+
+// ---- Churn ----
+Churn Rate =
+    DIVIDE([Churned], [Churn Base])
+Retention Rate =
+    DIVIDE([Stayed], [Churn Base])
+Competitor Churn Share =
+    DIVIDE(CALCULATE([Churned], Customers[Churn Category] = "Competitor"), [Churned])
+Top Churn Reason =
+    VAR t = TOPN(1, FILTER(VALUES(Customers[Churn Reason]), Customers[Churn Reason] <> "Not Churned"), [Churned], DESC) RETURN CONCATENATEX(t, Customers[Churn Reason], ", ")
+Avg Tenure Churned =
+    CALCULATE(AVERAGE(Customers[Tenure in Months]), Customers[Customer Status] = "Churned")
+Early Churn Share =
+    DIVIDE(CALCULATE([Churned], Customers[Tenure in Months] <= 6), [Churned])
+
+// ---- Revenue ----
+Total Revenue =
+    SUM(Customers[Total Revenue])
+Revenue Lost =
+    CALCULATE([Total Revenue], Customers[Customer Status] = "Churned")
+Monthly Billing =
+    SUM(Customers[Monthly Charge])
+Monthly Revenue at Risk =
+    CALCULATE([Monthly Billing], Customers[Customer Status] = "Churned")
+Revenue at Risk % =
+    DIVIDE([Monthly Revenue at Risk], [Monthly Billing])
+Avg Monthly Charge =
+    AVERAGE(Customers[Monthly Charge])
+Avg Revenue per Customer =
+    DIVIDE([Total Revenue], [Total Customers])
+
+// ---- Profile ----
+Avg Age =
+    AVERAGE(Customers[Age])
+Avg Tenure =
+    AVERAGE(Customers[Tenure in Months])
+Referral Rate =
+    DIVIDE(CALCULATE([Total Customers], Customers[Number of Referrals] > 0), [Total Customers])
+Married % =
+    DIVIDE(CALCULATE([Total Customers], Customers[Married] = "Yes"), [Total Customers])
+Dependents % =
+    DIVIDE(CALCULATE([Total Customers], Customers[Number of Dependents] > 0), [Total Customers])
+
+// ---- Services ----
+Offer Uptake % =
+    DIVIDE(CALCULATE([Total Customers], Customers[Offer] <> "No Offer"), [Total Customers])
+Internet Customers % =
+    DIVIDE(CALCULATE([Total Customers], Customers[Internet Service] = "Yes"), [Total Customers])
+Avg Add-on Services =
+    CALCULATE(AVERAGE(Customers[Add-on Services]), Customers[Internet Service] = "Yes")
+Avg GB Download =
+    AVERAGE(Customers[Avg Monthly GB Download])
+Fiber Churn Rate =
+    CALCULATE([Churn Rate], Customers[Internet Type] = "Fiber Optic")
+
+// ---- Geography ----
+Cities =
+    CALCULATE(DISTINCTCOUNT(Locations[City]), Customers)
+Zip Codes =
+    DISTINCTCOUNT(Customers[Zip Code])
+Population Covered =
+    SUMX(FILTER(Locations, NOT ISEMPTY(RELATEDTABLE(Customers))), Locations[Population])
+Customers per 1K Residents =
+    DIVIDE([Total Customers], [Population Covered]) * 1000
+Top City by Churned =
+    VAR t = TOPN(1, VALUES(Locations[City]), [Churned], DESC) RETURN CONCATENATEX(t, Locations[City], ", ")
+
+// ---- High Value ----
+High-Value Customers =
+    CALCULATE([Total Customers], Customers[Value Segment] = "Top 25%")
+High-Value Churn Rate =
+    CALCULATE([Churn Rate], Customers[Value Segment] = "Top 25%")
+High-Value Churned =
+    CALCULATE([Churned], Customers[Value Segment] = "Top 25%")
+High-Value Revenue Lost =
+    CALCULATE([Revenue Lost], Customers[Value Segment] = "Top 25%")
+High-Value Share of Revenue Lost =
+    DIVIDE([High-Value Revenue Lost], [Revenue Lost])
+High-Value Monthly at Risk =
+    CALCULATE([Monthly Revenue at Risk], Customers[Value Segment] = "Top 25%")
+
+// ---- Data Quality ----
+Negative Charges Fixed =
+    SUM(Customers[Charge Was Negative])
